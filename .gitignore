@@ -6,22 +6,26 @@ output timeup;
 reg [7:0] value;
 input clock, clear, s1,s2,s3;   
 reg load,count;  
-parameter flash =2'b00, green = 2'b01, yellow = 2'b10, red = 2'b11;  
+parameter flash =2'b00,
+          green = 2'b01,
+          yellow = 2'b10,
+          red = 2'b11;  
 parameter true = 1'b1;
 parameter false = 1'b0;
 
 // State definition        south_to_north    west_to_east
-parameter st0 = 7'b0000001,     //f             f 
-          st1 = 7'b0000010,     //r             r
-          st2 = 7'b0000100,     //g             r
-          st3 = 7'b0001000,     //y             r
-          st4 = 7'b0010000,     //r             r
-          st5 = 7'b0100000,     //r             g         
-          st6 = 7'b1000000;      //r             y       
+parameter st0 = 6'b000001,     //RED             RED            sensor input check present if s1=0,s2=0,s3=0   loop in same state else if s2 or s3 on go to s1 else go to s4  
+          st1 = 6'b000010,     //RED             GREEN          no sensor input check in this state go to s2
+          st2 = 6'b000100,     //RED             YELLOW         no sensor input check in this state go to s3
+          st3 = 6'b001000,     //RED             RED            no sensor input check in this state go to s4 
+          st4 = 6'b010000,     //GREEN           RED            if s1=1 then loop in same state else go to s0       
+          st5 = 6'b100000;     //YELLOW          RED            no sensor input check next sate will be st0        
+                 
        
 reg [5:0] state, next_state;
 counter c1(clock, load, value, count, timeup); 
 // State changes only at positive edge of clock 
+
         always@(posedge clock) 
         begin 
         if (clear)
@@ -30,17 +34,12 @@ counter c1(clock, load, value, count, timeup);
         state <= next_state;   //State change
         end
  
+ 
       always@(state)
       begin 
       
       case (state)
 
-    // st0:     begin 
-        //      L1=flash;
-        //      L2=flash;
-         //     L3 =flash;            
-         //     end 
-      
      st0:     begin
               L1=red;
               L2=red;
@@ -79,22 +78,28 @@ counter c1(clock, load, value, count, timeup);
      endcase 
   end 
 
+always@(state or s1,s2,s3)
+begin
+if (L1==red || L1==yellow || L1==green || L1==red || L2==yellow || L2==green || L2==red || L3==yellow || L3==green || L3 ==red) //For fail safe condition
+      begin                                              
+      state <=next_state;
+      end
+else
+  begin
+    L1=flash;
+    L2=flash;   //Fail safe condition
+    L3=flash;     
+  end
+end
 // State machine using case statements 
   always@(state or s1,s2,s3)
   begin 
+
        case (state)
 
-                 //  st0:		begin 
-                   	//	if (s1==false && (s2==false && s3==false)) 
-                   	//	next_state = st0;
-                   	//	else
-                   	//	next_state = st1;
-                   	//	end
-   
+
                    st0: 	begin  
-				value=8'b00000001;      //value of one is passed for the counter
-				//load<=true; 
-             			//count<=true; 
+				value=8'b00000001;      //value of one is passed for the counter 
                   		if(s1 == false  && (s2==false && s3==false))     
                   		next_state = st0;
                                 else if(s1==false ||((s2== false || s3==true)|| (s2== true || s3==false)))
