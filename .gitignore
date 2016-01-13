@@ -20,7 +20,7 @@ parameter st0 = 7'b0000001,     //f             f
           st4 = 7'b0010000,     //r             r
           st5 = 7'b0100000,     //r             g         
           st6 = 7'b1000000;      //r             y       
-         
+       
 reg [5:0] state, next_state;
 counter c1(clock, load, value, count, timeup); 
 // State changes only at positive edge of clock 
@@ -101,7 +101,7 @@ counter c1(clock, load, value, count, timeup);
                   		next_state = st0;
                                 else if(s1==false ||((s2== false || s3==true)|| (s2== true || s3==false)))
                                 next_state = st1;
-                  		else (s1==true &&((s2== false || s3==false))                   
+                  		else if(s1==true &&(s2== false || s3==false))  //check if condition                 
                   		next_state = st4;
                    		end 
 
@@ -131,7 +131,7 @@ counter c1(clock, load, value, count, timeup);
 
                    st4:		begin 
                 		value=8'b00001111;   //value of 15 is passed for delay
-                                if(s1==true &&((s2==false || s3 == false))   
+                                if(s1==true &&(s2==false || s3 == false))   
               			//load=true; 
               			//count=true;     
                    		next_state = st4; 
