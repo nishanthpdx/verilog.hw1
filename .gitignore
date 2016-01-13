@@ -1,31 +1,32 @@
-`define true 1'b1';
-`define flase 1'b0';
 
-
-///clk, load, value, count, timeup
-module sig_control(south_to_north, west_to_east, s1,s2,s3, clock, count,load,value,timeup,r1, y1, g1, r2, y2, g2, r3, y3, g3, clear); 
+                                                                                                   //add south_to_north, west_to_east, to module if needed
+                                                                                                     ///clk, load, value, count, timeup
+module traffic_controller( s1,s2,s3, clock, count,load,timeup,l1,l2,l3, clear); 
 
 // I/O ports
-output r1, y1, g1, r2, y2, g2, r3, y3, g3,timeup;
+output  reg [1:0] l1,l2,l3;
+output reg timeup;
 reg [7:0] value;
 //output [1:0] south_to_north, west_to_east; //2-bit output for 3 signal states (green, yellow, red) 
-reg [1:0] south_to_north, west_to_east;  // declared output signals are registers
+//reg [1:0] south_to_north, west_to_east;  // declared output signals are registers
 input s1,s2,s3;    // if TRUE, s2 or s3 same  indicates there is car on the side street, otherwise FALSE 
-input clock, clear,load,count;  
-parameter flash =2'd0, green = 2'd1, yellow = 2'd2, red = 2'd3;  
+input clock,  clear,load,count;  
+parameter flash =2'b00, green = 2'b01, yellow = 2'b10, red = 2'b11;  
+parameter true = 1'b1;
+parameter false = 1'b0;
 
 // State definition        south_to_north    west_to_east
 parameter st0 = 7'b0000001,     //f             f 
           st1 = 7'b0000010,     //r             r
           st2 = 7'b0000100,     //g             r
-          st3 = 7'b0000100,     //y             r
-          st4 = 7'b0000100,     //r             r
-          st5 = 7'b0000100,     //r             g         
-          st6 = 7'b0000100;      //r             y       
+          st3 = 7'b0001000,     //y             r
+          st4 = 7'b0010000,     //r             r
+          st5 = 7'b0100000,     //r             g         
+          st6 = 7'b1000000;      //r             y       
 // Internal state variable          
-reg [3:0] state;
-reg [3:0] next_state;
-
+reg [7:0] state,
+next_state;
+counter C1(clock, load, value, count, timeup); 
 // State changes only at positive edge of clock 
         always@(posedge clock) 
         begin 
@@ -42,88 +43,103 @@ reg [3:0] next_state;
       case (state)
 
      st0:    begin 
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100100100;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}=9'b000000000;              //Lights flashes
+              l1 =flash;//{r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100100100;
+              l2=flash;
+              l3 =flash;//{r1, y1, g1, r2, y2, g2, r3, y3, g3}=9'b000000000;              //Lights flashes
               end       
      st1:     begin
               //south_to_north = red;
               //west_to_east = red;
-              {r1,y1,g1,r2,y2,g2,r3,y3,g3}= 9'b100100100;     
-              counter at_red(clock, load, 1, count, timeup);  
+               value<=8'b00000001;      //value of one is passed
+              l1 = red;
+               l2=red;
+              l3=red;//{r1,y1,g1,r2,y2,g2,r3,y3,g3}= 9'b100100100;     
+              load<=true; 
+              count<=true; 
               end
-     st2:        begin
+     st2:     begin
               //south_to_north = green;
               //west_to_east = red;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b001100100;    
-              counter at_green_south_to_north(clock, load, 45, count, timeup);     
+              l1=green;l2=red;l3=red;//{r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b001100100;  
+               value<=8'b00101101;   //value of 45 is passed for delay
+              load=true; 
+              count=true;     
               end
      st3:      begin  
               //south_to_north = yellow;  
               //west_to_east = red;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b010100100;     
-              counter at_yellow(clock, load, 5, count, timeup); 
+              l1=yellow;l2=red;l3=red;//{r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b010100100;
+               value<=8'b00000101;   //value of 5 is passed for delay
+              load=true; 
+              count=true; 
               end
     st4:      begin  
               //south_to_north = red;  
               //west_to_east = red;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100100100;       
-              counter at_red1(clock, load, 1, count, timeup);  
+              l1=red;l2=red;l3=red;//{r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100100100;
+              value<=8'b00000001;      //value of one is passed for delay
+              load=true; 
+              count=true; 
               end
      st5:      begin  
               //south_to_north = red;  
               //west_to_east = green;
-               {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100001001; 
-              counter at_green_west_to_east(clock, load, 15, count, timeup);    
+               l1=red;l2=green;l3=green;//{r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100001001; 
+                value<=8'b00001111;   //value of 15 is passed for delay
+              load=true; 
+              count=true;
               end
      st6:      begin  
               //south_to_north = red;  
               //west_to_east = yellow; 
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100010010;  
-              counter at_yellow1(clock, load, 5, count, timeup);       
+              l1=red;l2=yellow;l3=yellow; //{r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100010010;
+              value<=8'b00000101;    //value of 5 is passed for delay
+              load=true; 
+              count=true;      
               end
      endcase 
   end 
 
 // State machine using case statements 
-  always@(state || s1,s2,s3)
+  always@(state or s1,s2,s3)
   begin 
-       case@(state)
+       case (state)
 
-                   st0:if (s1=false && (s2=false && s3=false)) 
+                   st0:begin 
+                   if (s1==false && (s2==false && s3==false)) 
                    next_state = st0;
                    else
                    next_state = st1;
-                   st1: if(s1 =true  || (s2=false && s3= false))
-                   begin    
+                   end   
+                   st1: 
+                   begin  
+                   if(s1 == true  || (s2==false && s3==false))   
                   //repeat (`Y2R_DELAY)@(posedge clock);  
                    next_state <= st2;
-                   else if(s1=false &&((s2= true || s3=false)||(s2= false || s3=true)|(s2= true || s3=true))
+                   else if(s1==false &&((s2== true || s3==false)||(s2== false || s3==true)|(s2== true || s3==true)))
                    next_state <= st5;
                    end
 
-                   st2: 
-                   begin     
-                   if(s1=false &&((s2=true || s3 = true)||(s2= true || s3=false)|| (s2= false || s3=true))               
+                   st2:begin     
+                   if(s1==false &&((s2==true || s3 == true)||(s2== true || s3==false)|| (s2==false || s3==true)))               
                    //repeat (`R2G_DELAY)@(posedge clock);  
                    next_state <= st3; 
-                   else if (s1=true &&(s2=false && s3=false))
+                   else if (s1==true &&(s2==false && s3==false))
                    next_state <= st2;    
                    end
 
-                   st3:
+                   st3:begin
                    next_state <= st4;
-
-                   st4:
-                   begin   
-                   //repeat (`Y2R_DELAY)@(posedge clock);  
-                   next_state <= st5;
                    end   
-
+                   st4: 
+                   begin 
+                   //repeat (`Y2R_DELAY)@(posedge clock);  
+                   next_state <= st5; 
+                   end 
                   st5:
                   begin     //if(s1=true)  
                   //repeat (`R2G_DELA Y)@(posedge clock);  
                    next_state <= st6; 
-                
                    end
 
                    st6:
@@ -137,18 +153,17 @@ reg [3:0] next_state;
  
 endmodule
 
-
 module counter(clk, load, value, count, timeup);
 input clk, load, count;
 input [7:0] value;
-output timeup;
+output reg timeup;
 reg [7:0] c;
 always @(c)
 begin
 if (c == 0)
-timeup = 1;
+timeup <= 1;   //DOUBT
 else
-timeup = 0;
+timeup <= 0;  //DOUBT       
 end
 always @(posedge clk)
 begin
@@ -160,6 +175,3 @@ else
 c <= c;
 end
 endmodule
-
-
-//clk, load, value, count, timeup 1,1,45,1,0
