@@ -47,87 +47,112 @@ end
       case (state)
 
      st0:     begin
-           //if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
-           //   begin
+                load=1;
+	         value=8'b00000001;      //value of one is passed for the counter  
+	        load=0;
+                count=1;
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
               L1=red;
               L2=red;
               L3=red;     
-             // end
-           /*else 
+             end
+           else 
               begin 
               L1=flash;
               L2=flash;
               L3=flash;
-             end*/
+             end
            end 
      st1:     begin
-           //if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
-             // begin
+               load<=1;
+               value<=8'b00001111;                              
+               load<=0;
+                count=1;     
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
               L1=green;
               L2=red;
               L3=red;     
               end
-           /*else 
+           else 
               begin 
               L1=flash;
               L2=flash;
               L3=flash;
              end
-           end */
+           end
 
-     st2:     begin  
-           //if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
-             // begin
+     st2:     begin
+              load<=1;
+              value<=8'b00000101;   //value of 5 is passed for delay 
+              load<=0;
+               count=1;     
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
               L1=yellow;
               L2=red;
               L3=red;     
               end
-           /*else 
+           else 
               begin 
               L1=flash;
               L2=flash;
               L3=flash;
              end
-           end */
+           end 
 
-     st3:     begin  
-           //if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
-           //   begin
+     st3:     begin 
+              value<=8'b00000001;      //value of one is passed for delay
+              load<=1;
+              load<=0;
+              count=1;     
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
               L1=red;
               L2=red;
               L3=red;     
               end
-           /*else 
+           else 
               begin 
               L1=flash;
               L2=flash;
               L3=flash;
              end
-           end */
+           end 
 
      st4:      begin  
-           //if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
-            //  begin
+               value<=8'b00101101;   //value of 45 is passed for delay
+               load<=1;
+               load<=0;
+               count=1;     
+     
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
               L1=red;
               L2=green;
               L3=green;     
               end
-           /*else 
+           else 
               begin 
               L1=flash;
               L2=flash;
               L3=flash;
              end
-           end */
+           end 
 
      st5:     begin 
-           //if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
-           //   begin
+              value<=8'b00001111;   //value of 15 is passed for delay
+              load<=1;
+              load<=0;
+              count=1; 
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
               L1=red;
               L2=yellow;
               L3=yellow;     
               end
-          /* else 
+           else 
               begin 
               L1=flash;
               L2=flash;
@@ -138,7 +163,7 @@ end
               L1=flash;
               L2=flash;
               L3=flash;
-              end*/
+              end
              
      endcase 
   end 
@@ -151,28 +176,20 @@ end
        case (state)
 
 
-                   st0: 	begin
-                                load<=1;
-				value<=8'b00000001;      //value of one is passed for the counter  
-                                #100 load<=0;
-                                count=1;
+                   st0:       begin
                                 if(timeup1)
-                                begin                
-				value=8'b00000001;      //value of one is passed for the counter 
+                               begin                
                   		if(s1 == false  && (s2==false && s3==false))     
                   		next_state= st0;
                                 else if(s1==false ||((s2== false || s3==true)|| (s2== true || s3==false)))
                                 next_state = st1;
                   		else if(s1==true &&(s2== false || s3==false))  //check if condition                 
                   		next_state = st4;
-                   		end 
-                             end
+                   	       end 
+                   	      end	
+                             
 
                    st1:		begin
-                                load<=1;
-                                value<=8'b00001111;                              
-                                #1000000 load<=0;
-                                count=1;
                                 if(timeup1)
                                 begin
                   		next_state = st2;    
@@ -182,11 +199,7 @@ end
                                 end    
 
                    st2:		begin
-                                load<=1;
-                                value<=8'b00000101;   //value of 5 is passed for delay 
-                                #10 load<=0;
-                                  
-                                count=1;
+
                                 if(timeup1)
                                 begin
                    		next_state = st3;
@@ -196,11 +209,6 @@ end
                                 end            
   
                    st3: 	begin
-                                value<=8'b00000001;      //value of one is passed for delay
-                                load<=1;
-                                #10 load<=0;
-                                      
-                                count=1;
                                 if(timeup1)
                                 begin 
                    		next_state = st4; 
@@ -210,11 +218,7 @@ end
                                 end         
 
                    st4:		begin 
-                                value<=8'b00101101;   //value of 45 is passed for delay
-                                load<=1;
-                                #10 load<=0;
-                                   
-                                count=1;
+
                                 if(timeup1)
                                 begin              
                 		if(s1==true &&(s2==false || s3 == false))       
@@ -227,11 +231,6 @@ end
                                 end    
 
                    st5:		begin  
-             			value<=8'b00001111;   //value of 15 is passed for delay
-                                 load<=1;
-                                 #10 load<=0;
-                                          
-                                 count=1;  
                                  if(timeup1)
                                  begin  
                    		next_state = st0; 
