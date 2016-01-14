@@ -190,10 +190,10 @@ end
                                 if(timeup)
                                begin                
                   		if(S1 == false  && (S2==false && S3==false))     
-                  		next_state= st0;
+                  		next_state= state0;
                                 else if(S1==false ||((S2== false || S3==true)|| (S2== true || S3==false)))
                                 next_state = state1;
-                  		else if(s1==true &&(s2== false || s3==false))  //check if condition                 
+                  		else if(s1==true &&(S2== false || S3==false))  //check if condition                 
                   		next_state = state4;
                    	       end 
                    	      end	
