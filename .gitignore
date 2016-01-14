@@ -1,12 +1,22 @@
 `timescale 1ms/1ms
-module traffic_controller( reset,s1,s2,s3, clock,L1,L2,L3); 
+module fsm( Clock,Reset,S1,S2,S3, L1,L2,L3); 
 
 // I/O ports
-output  reg [1:0] L1,L2,L3;
-wire timeup1;
-reg [7:0] value;
-input clock, reset, s1,s2,s3;   
+
+output  reg [1:0]   // outputs for controlling traffic lights (00, 01 11 for green, yellow, red)
+               L1,  // light for NB SW 4th Avenue 
+               L2,  // light for EB SW Harrison Street 
+               L3;  // light for WB SW Harrison Street
+
+input Clock, Reset;
+                     // sensors for approaching vehicles
+input S1,            // Northbound on SW 4th Avenue
+      S2,            // Eastbound on SW Harrison Street 
+      S3;            // Westbound on SW Harrison Street
+      
 reg load,count;  
+wire timeup;
+reg [7:0] value;
 parameter flash =2'b00,
           green = 2'b01,
           yellow = 2'b10,
@@ -15,27 +25,27 @@ parameter true = 1'b1;
 parameter false = 1'b0;
 
 // State definition        south_to_north    west_to_east
-parameter st0 = 6'b000001,     //RED             RED            sensor input check present if s1=0,s2=0,s3=0   loop in same state else if s2 or s3 on go to s1 else go to s4  
-          st1 = 6'b000010,     //RED             GREEN          no sensor input check in this state go to s2
-          st2 = 6'b000100,     //RED             YELLOW         no sensor input check in this state go to s3
-          st3 = 6'b001000,     //RED             RED            no sensor input check in this state go to s4 
-          st4 = 6'b010000,     //GREEN           RED            if s1=1 then loop in same state else go to s0       
-          st5 = 6'b100000;     //YELLOW          RED            no sensor input check next sate will be st0        
+parameter state0 = 6'b000001,     //RED             RED            sensor input check present if s1=0,s2=0,s3=0   loop in same state else if s2 or s3 on go to s1 else go to s4  
+          state1 = 6'b000010,     //RED             GREEN          no sensor input check in this state go to s2
+          state2 = 6'b000100,     //RED             YELLOW         no sensor input check in this state go to s3
+          state3 = 6'b001000,     //RED             RED            no sensor input check in this state go to s4 
+          state4 = 6'b010000,     //GREEN           RED            if s1=1 then loop in same state else go to s0       
+          state5 = 6'b100000;     //YELLOW          RED            no sensor input check next sate will be st0        
                  
        
 reg [5:0] state, next_state;
-counter instantiate(clock, load, value, count, timeup1); 
-// State changes only at positive edge of clock 
+counter instantiate(Clock, load, value, count, timeup1); 
+// Change of state is only at positive edge of clock 
 
 initial
 begin
 $monitor( "%b",  value);
 end
 
-        always@(posedge clock) 
+        always@(posedge Clock) 
         begin 
-        if (reset)
-        state <= st0;         
+        if (Reset)
+        state <= state0;         
         else  
         state <= next_state;   //State change
         end
@@ -46,7 +56,7 @@ end
       
       case (state)
 
-     st0:     begin
+     state0:     begin
                 load=1;
 	         value=8'b00000001;      //value of one is passed for the counter  
 	        load=0;
@@ -64,7 +74,7 @@ end
               L3=flash;
              end
            end 
-     st1:     begin
+     state1:     begin
                load=1;
                value=8'b00001111;                              
                load=0;
@@ -83,7 +93,7 @@ end
              end
            end
 
-     st2:     begin
+     state2:     begin
               load=1;
               value=8'b00000101;   //value of 5 is passed for delay 
               load=0;
@@ -102,7 +112,7 @@ end
              end
            end 
 
-     st3:     begin 
+     state3:     begin 
               value=8'b00000001;      //value of one is passed for delay
               load=1;
               load=0;
@@ -121,7 +131,7 @@ end
              end
            end 
 
-     st4:      begin  
+     state4:      begin  
                value=8'b00101101;   //value of 45 is passed for delay
                load=1;
                load=0;
@@ -141,7 +151,7 @@ end
              end
            end 
 
-     st5:     begin 
+     state5:     begin 
               value=8'b00001111;   //value of 15 is passed for delay
               load=1;
               load=0;
@@ -170,75 +180,75 @@ end
 
 
 // State machine using case statements 
-  always@(state,timeup1,s1,s2,s3)
+  always@(state,timeup,S1,S2,S3)
   begin 
 
        case (state)
 
 
-                   st0:       begin
-                                if(timeup1)
+                   state0:       begin
+                                if(timeup)
                                begin                
-                  		if(s1 == false  && (s2==false && s3==false))     
+                  		if(S1 == false  && (S2==false && S3==false))     
                   		next_state= st0;
-                                else if(s1==false ||((s2== false || s3==true)|| (s2== true || s3==false)))
-                                next_state = st1;
+                                else if(S1==false ||((S2== false || S3==true)|| (S2== true || S3==false)))
+                                next_state = state1;
                   		else if(s1==true &&(s2== false || s3==false))  //check if condition                 
-                  		next_state = st4;
+                  		next_state = state4;
                    	       end 
                    	      end	
                              
 
-                   st1:		begin
-                                if(timeup1)
+                   state1:	begin
+                                if(timeup)
                                 begin
-                  		next_state = st2;    
+                  		next_state = state2;    
                   		end
                                 else
-                                next_state=st1;
+                                next_state=state1;
                                 end    
 
-                   st2:		begin
+                   state2	begin
 
-                                if(timeup1)
+                                if(timeup)
                                 begin
-                   		next_state = st3;
+                   		next_state = state3;
                    		end 
                                 else 
-                                next_state=st2;
+                                next_state=state2;
                                 end            
   
-                   st3: 	begin
-                                if(timeup1)
+                   state3: 	begin
+                                if(timeup)
                                 begin 
-                   		next_state = st4; 
+                   		next_state = state4; 
                    		end 
                                 else
-                                next_state=st3;
+                                next_state=state3;
                                 end         
 
-                   st4:		begin 
+                   state4:	begin 
 
-                                if(timeup1)
+                                if(timeup)
                                 begin              
-                		if(s1==true &&(s2==false || s3 == false))       
-                   		next_state = st4; 
+                		if(S1==true &&(S2==false || S3 == false))       
+                   		next_state = state4; 
                                 else 
-                                next_state = st5; 
+                                next_state = state5; 
                   		end
                                else
-                                next_state = st4;
+                                next_state = state4;
                                 end    
 
-                   st5:		begin  
-                                 if(timeup1)
+                   state5:      begin  
+                                 if(timeup)
                                  begin  
-                   		next_state = st0; 
+                   		next_state = state0; 
                    		end
                                else
-                                 next_state =st5;
+                                 next_state =state5;
                                end          
-                  		default next_state = st0;
+                  		default next_state = state0;
      endcase 
  end
  
