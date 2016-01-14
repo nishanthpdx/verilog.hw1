@@ -1,165 +1,196 @@
-`define true 1'b1';
-`define flase 1'b0';
+// Behavioral model of the SW Harrison street traffic signal system
 
-
-///clk, load, value, count, timeup
-module sig_control(south_to_north, west_to_east, s1,s2,s3, clock, count,load,value,timeup,r1, y1, g1, r2, y2, g2, r3, y3, g3, clear); 
-
-// I/O ports
-output r1, y1, g1, r2, y2, g2, r3, y3, g3,timeup;
-reg [7:0] value;
-//output [1:0] south_to_north, west_to_east; //2-bit output for 3 signal states (green, yellow, red) 
-reg [1:0] south_to_north, west_to_east;  // declared output signals are registers
-input s1,s2,s3;    // if TRUE, s2 or s3 same  indicates there is car on the side street, otherwise FALSE 
-input clock, clear,load,count;  
-parameter flash =2'd0, green = 2'd1, yellow = 2'd2, red = 2'd3;  
-
-// State definition        south_to_north    west_to_east
-parameter st0 = 7'b0000001,     //f             f 
-          st1 = 7'b0000010,     //r             r
-          st2 = 7'b0000100,     //g             r
-          st3 = 7'b0000100,     //y             r
-          st4 = 7'b0000100,     //r             r
-          st5 = 7'b0000100,     //r             g         
-          st6 = 7'b0000100;      //r             y       
-// Internal state variable          
-reg [3:0] state;
-reg [3:0] next_state;
-
-// State changes only at positive edge of clock 
-        always@(posedge clock) 
-        begin 
-        if (clear)
-        state <= st0;          //Controller starts in S0 state
-        else  
-        state <= next_state;   //State change
-        end
- // Compute values of main signal and side signal
-      always@(state)
-      begin 
-      //south_to_north = flash; //Default Light Assignment for south_to_north light
-      //west_to_east = flash;   //Default Light Assignment for west_to_east light
-      case (state)
-
-     st0:    begin 
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100100100;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}=9'b000000000;              //Lights flashes
-              end       
-     st1:     begin
-              //south_to_north = red;
-              //west_to_east = red;
-              {r1,y1,g1,r2,y2,g2,r3,y3,g3}= 9'b100100100;     
-              counter at_red(clock, load, 1, count, timeup);  
-              end
-     st2:        begin
-              //south_to_north = green;
-              //west_to_east = red;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b001100100;    
-              counter at_green_south_to_north(clock, load, 45, count, timeup);     
-              end
-     st3:      begin  
-              //south_to_north = yellow;  
-              //west_to_east = red;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b010100100;     
-              counter at_yellow(clock, load, 5, count, timeup); 
-              end
-    st4:      begin  
-              //south_to_north = red;  
-              //west_to_east = red;
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100100100;       
-              counter at_red1(clock, load, 1, count, timeup);  
-              end
-     st5:      begin  
-              //south_to_north = red;  
-              //west_to_east = green;
-               {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100001001; 
-              counter at_green_west_to_east(clock, load, 15, count, timeup);    
-              end
-     st6:      begin  
-              //south_to_north = red;  
-              //west_to_east = yellow; 
-              {r1, y1, g1, r2, y2, g2, r3, y3, g3}= 9'b100010010;  
-              counter at_yellow1(clock, load, 5, count, timeup);       
-              end
-     endcase 
-  end 
-
-// State machine using case statements 
-  always@(state || s1,s2,s3)
-  begin 
-       case@(state)
-
-                   st0:if (s1=false && (s2=false && s3=false)) 
-                   next_state = st0;
-                   else
-                   next_state = st1;
-                   st1: if(s1 =true  || (s2=false && s3= false))
-                   begin    
-                  //repeat (`Y2R_DELAY)@(posedge clock);  
-                   next_state <= st2;
-                   else if(s1=false &&((s2= true || s3=false)||(s2= false || s3=true)|(s2= true || s3=true))
-                   next_state <= st5;
-                   end
-
-                   st2: 
-                   begin     
-                   if(s1=false &&((s2=true || s3 = true)||(s2= true || s3=false)|| (s2= false || s3=true))               
-                   //repeat (`R2G_DELAY)@(posedge clock);  
-                   next_state <= st3; 
-                   else if (s1=true &&(s2=false && s3=false))
-                   next_state <= st2;    
-                   end
-
-                   st3:
-                   next_state <= st4;
-
-                   st4:
-                   begin   
-                   //repeat (`Y2R_DELAY)@(posedge clock);  
-                   next_state <= st5;
-                   end   
-
-                  st5:
-                  begin     //if(s1=true)  
-                  //repeat (`R2G_DELA Y)@(posedge clock);  
-                   next_state <= st6; 
-                
-                   end
-
-                   st6:
-                   begin 
-                   //repeat (`R2G_DELAY)@(posedge clock);  
-                   next_state <= st1; 
-                   end
-                  default next_state <= st0;
-     endcase 
- end
- 
-endmodule
-
-
-module counter(clk, load, value, count, timeup);
-input clk, load, count;
-input [7:0] value;
-output timeup;
+module Counter(Clock, Load, Value, Count, Timeup);
+input Clock, Load, Count;
+input [7:0] Value;
+output Timeup;
 reg [7:0] c;
-always @(c)
+assign Timeup = (c == 0) ? 1 : 0;
+always @(posedge Clock)
 begin
-if (c == 0)
-timeup = 1;
-else
-timeup = 0;
-end
-always @(posedge clk)
-begin
-if (load)
-c <= value;
-else if (count && (c != 0))
-c <= c - 8'b1;
-else
-c <= c;
+  if (Load)
+  c <= Value;
+  else if (Count && (c != 0))
+  c <= c - 8'b1;
+  else
+  c <= c;
 end
 endmodule
 
 
-//clk, load, value, count, timeup 1,1,45,1,0
+module SWHarrisonTrafficSignal(Clock, Clear, S1, S2, S3, L1, L2, L3);
+input Clock,Clear,S1,S2,S3;
+output [1:0] L1,L2,L3;
+reg [1:0] L1,L2,L3;
+
+parameter FAILSAFE = 2'b00;
+parameter GREEN = 2'b01;
+parameter YELLOW = 2'b10;
+parameter RED = 2'b11;
+
+
+parameter
+   State0 = 6'b000001,
+   State1 = 6'b000010,
+   State2 = 6'b000100,
+   State3 = 6'b001000,
+   State4 = 6'b010000,
+   State5 = 6'b100000;
+   
+reg Load,Count;
+reg [7:0] Value;
+wire Timeup;
+
+Counter C1(Clock, Load, Value, Count, Timeup);
+
+reg [5:0] State, NextState;
+
+always @(posedge Clock)
+begin
+if(Clear)
+   State <= State0;
+else
+   State <= NextState;
+end
+
+always @(State)
+begin
+case (State)
+    State0 : begin
+	L1 = GREEN;
+	L2 = RED;
+	L3 = RED;
+	end
+    State1 : begin
+	L1 = YELLOW;
+	L2 = RED;
+	L3 = RED;
+	end
+     State2 : begin
+	L1 = RED;
+	L2 = RED;
+	L3 = RED;
+	end
+      State3 : begin
+	L1 = RED;
+	L2 = GREEN;
+	L3 = GREEN;
+	end
+      State4 : begin
+	L1 = RED;
+	L2 = YELLOW;
+	L3 = YELLOW;
+	end
+      State5 : begin
+	L1 = RED;
+	L2 = RED;
+	L3 = RED;
+	end
+endcase
+end
+	
+
+always @( State or S1 or S2 or S3  or Timeup)
+begin 
+case (State)
+	State0 : begin
+	 Load = 0; 
+	    if (Clear == 1)
+	    begin
+	      Load = 1;
+	      Value = 8'b00101101;
+	      Count = 1;
+	      NextState = State0;
+	   end
+	   else if (Clear == 0)
+	   begin
+	      Load  = 0;
+	      Count = 1;
+	   if (Timeup == 1)
+	   begin
+	      if (S2 || S3)
+	      begin
+	        Load = 1;
+	        Value = 8'b00000101;
+	        NextState = State1;
+	      end
+	      else
+	        NextState = State0;
+	      end
+           else
+	      NextState = State0;
+	   end
+	   end   
+	 State1 : begin
+	    Load  = 0;
+	    Count = 1;
+	    if (Timeup)
+	    begin
+	     Load = 1;
+	     Value = 8'b00000001;
+	     NextState = State2;
+	    end
+	    else
+	     NextState = State1;
+	    end
+	  State2 : begin
+	    Load  = 0;
+	    Count = 1;
+	    if (Timeup)
+	    begin
+	     Load = 1;
+	     Value = 8'b00001111;
+	     NextState = State3;
+	    end
+	    else
+	     NextState = State2;
+	    end
+	  State3 : begin
+	   Load  = 0;
+	   Count = 1;
+	   if (Timeup)
+	   begin
+	    Load = 1;
+	    Value = 8'b00000101;
+	    NextState = State4;
+	   end
+	   else
+	    NextState = State3;
+	   end
+	  State4 : begin
+	   Load  = 0;
+	   Count = 1;
+	   if (Timeup)	
+	   begin
+	    Load = 1;
+	    Value = 8'b00000001;
+	    NextState = State5;
+	   end
+	   else
+	    NextState = State4;
+	   end
+          State5 : begin
+	    Load  = 0;
+	    Count = 1;
+	    if (Timeup)
+	    begin
+	     Load = 1;
+	     Value = 8'b00101101;
+	     NextState = State0;
+	    end
+	    else
+	     NextState = State5;
+	    end
+	 
+endcase
+end  
+
+endmodule
+
+	
+	
+	  
+
+
+  
+
