@@ -208,8 +208,7 @@ end
                                 next_state=state1;
                                 end    
 
-                   state2	begin
-
+                   state2:	begin
                                 if(timeup)
                                 begin
                    		next_state = state3;
