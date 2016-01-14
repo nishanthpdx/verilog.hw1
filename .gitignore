@@ -1,68 +1,265 @@
+`timescale 1s/10us
+module traffic_controller( reset,s1,s2,s3, clock,L1,L2,L3); 
 
-module top1;
-reg s1,s2,s3,clock,reset,load,count;
+// I/O ports
+output  reg [1:0] L1,L2,L3;
 wire timeup;
-wire [1:0] L1,L2,L3;
-parameter true =1'b1;
-parameter false=1'b0;
-parameter clock_cycle  = 20;parameter IDLE_CLOCKS  = 2;
-parameter clock_width  = clock_cycle/2;
-traffic_controller c(reset,s1,s2,s3,clock,L1,L2,L3);
-initial 
+reg [7:0] value;
+input clock, reset, s1,s2,s3;   
+reg load,count;  
+parameter flash =2'b00,
+          green = 2'b01,
+          yellow = 2'b10,
+          red = 2'b11;  
+parameter true = 1'b1;
+parameter false = 1'b0;
+
+// State definition        south_to_north    west_to_east
+parameter st0 = 6'b000001,     //RED             RED            sensor input check present if s1=0,s2=0,s3=0   loop in same state else if s2 or s3 on go to s1 else go to s4  
+          st1 = 6'b000010,     //RED             GREEN          no sensor input check in this state go to s2
+          st2 = 6'b000100,     //RED             YELLOW         no sensor input check in this state go to s3
+          st3 = 6'b001000,     //RED             RED            no sensor input check in this state go to s4 
+          st4 = 6'b010000,     //GREEN           RED            if s1=1 then loop in same state else go to s0       
+          st5 = 6'b100000;     //YELLOW          RED            no sensor input check next sate will be st0        
+                 
+       
+reg [5:0] state, next_state;
+counter instantiate(clock, load, value, count, timeup); 
+// State changes only at positive edge of clock 
+
+        always@(posedge clock) 
+        begin 
+        if (reset)
+        state <= st0;         
+        else  
+        state <= next_state;   //State change
+        end
+ 
+ 
+      always@(state)
+      begin 
+      
+      case (state)
+
+     st0:     begin
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+     st1:     begin
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=green;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+
+     st2:     begin  
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=yellow;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+
+     st3:     begin  
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+
+     st4:      begin  
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=green;
+              L3=green;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+
+     st5:     begin 
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=yellow;
+              L3=yellow;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+              default:begin
+              L1=flash;
+              L2=flash;
+              L3=flash;
+              end
+             
+     endcase 
+  end 
+
+
+// State machine using case statements 
+  always@(state,timeup,s1,s2,s3)
+  begin 
+
+       case (state)
+
+
+                   st0: 	begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin
+                                load=1;
+                                //load<= #1 0;               
+				value=8'b00000001;      //value of one is passed for the counter 
+                  		if(s1 == false  && (s2==false && s3==false))     
+                  		next_state = st0;
+                                else if(s1==false ||((s2== false || s3==true)|| (s2== true || s3==false)))
+                                next_state = st1;
+                  		else if(s1==true &&(s2== false || s3==false))  //check if condition                 
+                  		next_state = st4;
+                   		end 
+                             end
+
+                   st1:		begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin
+                                load=1;
+                                //load<= #1 0;                
+             			value=8'b00001111;   //value of 15 is passed for delay
+                  		next_state = st2;    
+                  		end
+                                else
+                                next_state=st1;
+                                end    
+
+                   st2:		begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin 
+                                load=1;
+                                //load<= #1 0;    
+               			value =8'b00000101;   //value of 5 is passed for delay 
+                   		next_state = st3;
+                   		end 
+                                else 
+                                next_state=st2;
+                                end            
+  
+                   st3: 	begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin 
+                                load=1; 
+                                //load<= #1 0;                      
+              			value=8'b00000001;      //value of one is passed for delay
+                   		next_state = st4; 
+                   		end 
+                                else
+                                next_state=st3;
+                                end         
+
+                   st4:		begin 
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin
+                                load=1;   
+                                //load<= #1 0;           
+                                value=8'b00101101;   //value of 45 is passed for delay
+                		if(s1==true &&(s2==false || s3 == false))       
+                   		next_state = st4; 
+                                else 
+                                next_state = st5; 
+                  		end
+                               else
+                                next_state = st4;
+                                end    
+
+                   st5:		begin  
+                                 load=0;
+                                 count=1;  
+                                 if(timeup)
+                                 begin  
+                                 load=1;
+                                 //load<= #1 0;          
+             			value=8'b00001111;   //value of 15 is passed for delay
+                   		next_state = st0; 
+                   		end
+                               else
+                                 next_state =st5;
+                               end          
+                  		default next_state = st0;
+     endcase 
+ end
+ 
+endmodule
+
+module counter(clk, load, value, count, timeup);
+input clk, load, count;
+input [7:0] value;
+output reg timeup;
+reg [7:0] c;
+always @(c)
 begin
-$display("                           timeup,L1,L2,L3\n");
-$monitor($time, "%b, %b,%b,%b",timeup,L1,L2,L3);
+if (c == 0)
+timeup = 1;   
+else
+timeup = 0;        
 end
-
-//clock
-
-initial
+always @(posedge clk)
 begin
-clock=false;
-forever #clock_width clock=(~clock);
-end
-
-initial
-begin
-reset= true;
-repeat (IDLE_CLOCKS) @(negedge clock);
-reset=false;
-end
-
-initial
-begin
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00000;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00001;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00010;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00011;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00100;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00101;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00110;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b00111;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01000;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01001;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01010;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01011;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01100;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01101;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01110;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b01111;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10000;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10001;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10010;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10011;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10100;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10101;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10110;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b10111;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11000;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11001;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11010;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11011;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11100;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11101;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11110;
-repeat(9) @(negedge clock); {reset,count,load,s1,s2,s3}= 6'b11111;
-$stop;
+if (load)
+c <= value;
+else if (count && (c != 0))
+c <= c - 8'b1;
+else
+c <= c;
 end
 endmodule
