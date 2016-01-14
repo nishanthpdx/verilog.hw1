@@ -1,196 +1,258 @@
-// Behavioral model of the SW Harrison street traffic signal system
+module traffic_controller( reset,s1,s2,s3, clock,L1,L2,L3); 
 
-module Counter(Clock, Load, Value, Count, Timeup);
-input Clock, Load, Count;
-input [7:0] Value;
-output Timeup;
-reg [7:0] c;
-assign Timeup = (c == 0) ? 1 : 0;
-always @(posedge Clock)
-begin
-  if (Load)
-  c <= Value;
-  else if (Count && (c != 0))
-  c <= c - 8'b1;
-  else
-  c <= c;
-end
-endmodule
+// I/O ports
+output  reg [1:0] L1,L2,L3;
+wire timeup;
+reg [7:0] value;
+input clock, reset, s1,s2,s3;   
+reg load,count;  
+parameter flash =2'b00,
+          green = 2'b01,
+          yellow = 2'b10,
+          red = 2'b11;  
+parameter true = 1'b1;
+parameter false = 1'b0;
 
+// State definition        south_to_north    west_to_east
+parameter st0 = 6'b000001,     //RED             RED            sensor input check present if s1=0,s2=0,s3=0   loop in same state else if s2 or s3 on go to s1 else go to s4  
+          st1 = 6'b000010,     //RED             GREEN          no sensor input check in this state go to s2
+          st2 = 6'b000100,     //RED             YELLOW         no sensor input check in this state go to s3
+          st3 = 6'b001000,     //RED             RED            no sensor input check in this state go to s4 
+          st4 = 6'b010000,     //GREEN           RED            if s1=1 then loop in same state else go to s0       
+          st5 = 6'b100000;     //YELLOW          RED            no sensor input check next sate will be st0        
+                 
+       
+reg [5:0] state, next_state;
+counter instantiate(clock, load, value, count, timeup); 
+// State changes only at positive edge of clock 
 
-module SWHarrisonTrafficSignal(Clock, Clear, S1, S2, S3, L1, L2, L3);
-input Clock,Clear,S1,S2,S3;
-output [1:0] L1,L2,L3;
-reg [1:0] L1,L2,L3;
+        always@(posedge clock) 
+        begin 
+        if (reset)
+        state <= st0;         
+        else  
+        state <= next_state;   //State change
+        end
+ 
+ 
+      always@(state)
+      begin 
+      
+      case (state)
 
-parameter FAILSAFE = 2'b00;
-parameter GREEN = 2'b01;
-parameter YELLOW = 2'b10;
-parameter RED = 2'b11;
+     st0:     begin
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+     st1:     begin
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=green;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
 
+     st2:     begin  
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=yellow;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
 
-parameter
-   State0 = 6'b000001,
-   State1 = 6'b000010,
-   State2 = 6'b000100,
-   State3 = 6'b001000,
-   State4 = 6'b010000,
-   State5 = 6'b100000;
-   
-reg Load,Count;
-reg [7:0] Value;
-wire Timeup;
+     st3:     begin  
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=red;
+              L3=red;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
 
-Counter C1(Clock, Load, Value, Count, Timeup);
+     st4:      begin  
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=green;
+              L3=green;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
 
-reg [5:0] State, NextState;
-
-always @(posedge Clock)
-begin
-if(Clear)
-   State <= State0;
-else
-   State <= NextState;
-end
-
-always @(State)
-begin
-case (State)
-    State0 : begin
-	L1 = GREEN;
-	L2 = RED;
-	L3 = RED;
-	end
-    State1 : begin
-	L1 = YELLOW;
-	L2 = RED;
-	L3 = RED;
-	end
-     State2 : begin
-	L1 = RED;
-	L2 = RED;
-	L3 = RED;
-	end
-      State3 : begin
-	L1 = RED;
-	L2 = GREEN;
-	L3 = GREEN;
-	end
-      State4 : begin
-	L1 = RED;
-	L2 = YELLOW;
-	L3 = YELLOW;
-	end
-      State5 : begin
-	L1 = RED;
-	L2 = RED;
-	L3 = RED;
-	end
-endcase
-end
-	
-
-always @( State or S1 or S2 or S3  or Timeup)
-begin 
-case (State)
-	State0 : begin
-	 Load = 0; 
-	    if (Clear == 1)
-	    begin
-	      Load = 1;
-	      Value = 8'b00101101;
-	      Count = 1;
-	      NextState = State0;
-	   end
-	   else if (Clear == 0)
-	   begin
-	      Load  = 0;
-	      Count = 1;
-	   if (Timeup == 1)
-	   begin
-	      if (S2 || S3)
-	      begin
-	        Load = 1;
-	        Value = 8'b00000101;
-	        NextState = State1;
-	      end
-	      else
-	        NextState = State0;
-	      end
-           else
-	      NextState = State0;
-	   end
-	   end   
-	 State1 : begin
-	    Load  = 0;
-	    Count = 1;
-	    if (Timeup)
-	    begin
-	     Load = 1;
-	     Value = 8'b00000001;
-	     NextState = State2;
-	    end
-	    else
-	     NextState = State1;
-	    end
-	  State2 : begin
-	    Load  = 0;
-	    Count = 1;
-	    if (Timeup)
-	    begin
-	     Load = 1;
-	     Value = 8'b00001111;
-	     NextState = State3;
-	    end
-	    else
-	     NextState = State2;
-	    end
-	  State3 : begin
-	   Load  = 0;
-	   Count = 1;
-	   if (Timeup)
-	   begin
-	    Load = 1;
-	    Value = 8'b00000101;
-	    NextState = State4;
-	   end
-	   else
-	    NextState = State3;
-	   end
-	  State4 : begin
-	   Load  = 0;
-	   Count = 1;
-	   if (Timeup)	
-	   begin
-	    Load = 1;
-	    Value = 8'b00000001;
-	    NextState = State5;
-	   end
-	   else
-	    NextState = State4;
-	   end
-          State5 : begin
-	    Load  = 0;
-	    Count = 1;
-	    if (Timeup)
-	    begin
-	     Load = 1;
-	     Value = 8'b00101101;
-	     NextState = State0;
-	    end
-	    else
-	     NextState = State5;
-	    end
-	 
-endcase
-end  
-
-endmodule
-
-	
-	
-	  
+     st5:     begin 
+           if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
+              begin
+              L1=red;
+              L2=yellow;
+              L3=yellow;     
+              end
+           else 
+              begin 
+              L1=flash;
+              L2=flash;
+              L3=flash;
+             end
+           end 
+              default:begin
+              L1=flash;
+              L2=flash;
+              L3=flash;
+              end
+             
+     endcase 
+  end 
 
 
+// State machine using case statements 
+  always@(state,timeup,s1,s2,s3)
+  begin 
+
+       case (state)
+
+
+                   st0: 	begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin
+                                load=1;       
+				value=8'b00000001;      //value of one is passed for the counter 
+                  		if(s1 == false  && (s2==false && s3==false))     
+                  		next_state = st0;
+                                else if(s1==false ||((s2== false || s3==true)|| (s2== true || s3==false)))
+                                next_state = st1;
+                  		else if(s1==true &&(s2== false || s3==false))  //check if condition                 
+                  		next_state = st4;
+                   		end 
+                             end
+
+                   st1:		begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin
+                                load=1;            
+             			value=8'b00001111;   //value of 15 is passed for delay
+                  		next_state = st2;    
+                  		end
+                                else
+                                next_state=st1;
+                                end    
+
+                   st2:		begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin 
+                                load=1;
+               			value =8'b00000101;   //value of 5 is passed for delay 
+                   		next_state = st3;
+                   		end 
+                                else 
+                                next_state=st2;
+                                end            
   
+                   st3: 	begin
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin 
+                                load=1;               
+              			value=8'b00000001;      //value of one is passed for delay
+                   		next_state = st4; 
+                   		end 
+                                else
+                                next_state=st3;
+                                end         
 
+                   st4:		begin 
+                                load=0;
+                                count=1;
+                                if(timeup)
+                                begin
+                                load=1;              
+                                value=8'b00101101;   //value of 45 is passed for delay
+                		if(s1==true &&(s2==false || s3 == false))       
+                   		next_state = st4; 
+                                else 
+                                next_state = st5; 
+                  		end
+                               else
+                                next_state = st4;
+                                end    
+
+                   st5:		begin  
+                                 load=0;
+                                 count=1;  
+                                 if(timeup)
+                                 begin  
+                                 load=1;  
+             			value=8'b00001111;   //value of 15 is passed for delay
+                   		next_state = st0; 
+                   		end
+                               else
+                                 next_state =st5;
+                               end          
+                  		default next_state = st0;
+     endcase 
+ end
+ 
+endmodule
+
+module counter(clk, load, value, count, timeup);
+input clk, load, count;
+input [7:0] value;
+output reg timeup;
+reg [7:0] c;
+always @(c)
+begin
+if (c == 0)
+timeup = 1;   
+else
+timeup = 0;        
+end
+always @(posedge clk)
+begin
+if (load)
+c <= value;
+else if (count && (c != 0))
+c <= c - 8'b1;
+else
+c <= c;
+end
+endmodule
