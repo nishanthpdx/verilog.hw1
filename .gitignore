@@ -65,9 +65,9 @@ end
              end
            end 
      st1:     begin
-               load<=1;
-               value<=8'b00001111;                              
-               load<=0;
+               load=1;
+               value=8'b00001111;                              
+               load=0;
                 count=1;     
            if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
               begin
@@ -84,9 +84,9 @@ end
            end
 
      st2:     begin
-              load<=1;
-              value<=8'b00000101;   //value of 5 is passed for delay 
-              load<=0;
+              load=1;
+              value=8'b00000101;   //value of 5 is passed for delay 
+              load=0;
                count=1;     
            if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
               begin
@@ -103,9 +103,9 @@ end
            end 
 
      st3:     begin 
-              value<=8'b00000001;      //value of one is passed for delay
-              load<=1;
-              load<=0;
+              value=8'b00000001;      //value of one is passed for delay
+              load=1;
+              load=0;
               count=1;     
            if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
               begin
@@ -122,9 +122,9 @@ end
            end 
 
      st4:      begin  
-               value<=8'b00101101;   //value of 45 is passed for delay
-               load<=1;
-               load<=0;
+               value=8'b00101101;   //value of 45 is passed for delay
+               load=1;
+               load=0;
                count=1;     
      
            if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
@@ -142,9 +142,9 @@ end
            end 
 
      st5:     begin 
-              value<=8'b00001111;   //value of 15 is passed for delay
-              load<=1;
-              load<=0;
+              value=8'b00001111;   //value of 15 is passed for delay
+              load=1;
+              load=0;
               count=1; 
            if ((L1==green || yellow || red)&&(L2==green || yellow || red)&&(L2==green || yellow || red)) 
               begin
