@@ -8,7 +8,7 @@ parameter false=1'b0;
 parameter clock_cycle  = 20;
 parameter IDLE_CLOCKS  = 2;
 parameter clock_width  = clock_cycle/2;
-traffic_controller c(reset,s1,s2,s3,clock,L1,L2,L3);
+fsm c(reset,s1,s2,s3,clock,L1,L2,L3);
 initial 
 begin
 $display("                           timeup,L1,L2,L3\n");
